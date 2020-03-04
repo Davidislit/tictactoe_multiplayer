@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:client_experimental/helper/socket_service.dart';
+import 'package:client_experimental/main.dart';
 import 'package:flutter/material.dart';
 import 'game_communication.dart';
 import 'game_page_screen.dart';
@@ -8,6 +12,7 @@ class StartPageScreen extends StatefulWidget {
 }
 
 class _StartPageStateScreen extends State<StartPageScreen> {
+  SocketService _socketService = new SocketService();
   static final TextEditingController _name = new TextEditingController();
   String playerName;
   List<dynamic> playersList = <dynamic>[];
@@ -17,16 +22,35 @@ class _StartPageStateScreen extends State<StartPageScreen> {
   @override
   void initState() {
     super.initState();
-
+    _socketService.addListener(_onGameDataReceived);
     game.addListener(_onGameDataReceived);
+    _handlePageSubscribes();
   }
 
   @override
   void dispose() {
+    _socketService.removeListener(_onGameDataReceived);
     game.removeListener(_onGameDataReceived);
     super.dispose();
   }
 
+  _handlePageSubscribes() {
+    _socketService.addSubscribe('receive_message', (jsonData) {
+      Map<String, dynamic> message = json.decode(jsonData);
+      switch (message["action"]) {
+        case "player_list":
+          playersList = message["data"];
+          setState(() {});
+          print(playersList);
+          break;
+
+        default:
+          break;
+      }
+    });
+  }
+
+  // SOON TO BE DELETED
   _onGameDataReceived(message) {
     switch (message["action"]) {
       case "players_list":
@@ -89,7 +113,7 @@ class _StartPageStateScreen extends State<StartPageScreen> {
   }
 
   Widget _buildJoin() {
-    if (game.playerName != "") {
+    if (_socketService.playerName != "") {
       return new Container();
     }
     return new Container(
@@ -121,17 +145,24 @@ class _StartPageStateScreen extends State<StartPageScreen> {
   }
 
   _onGameJoin() {
-    game.send('join', _name.text);
+    _socketService.setPlayer(_name.text);
+    _socketService.send('join', _name.text);
+    // game.send('join', _name.text);
+    // if (playersList.length > 1) {
+
+    // }
     setState(() {
       _showPlayersList = true;
     });
 
     /// Force a rebuild
     setState(() {});
+    print("playerName: $_socketService.playerName");
+    print(_showPlayersList);
   }
 
   Widget _playersList() {
-    if (game.playerName == "") {
+    if (_socketService.playerName == "" || playersList.length > 1) {
       return new Container();
     }
 
@@ -226,6 +257,17 @@ class _StartPageStateScreen extends State<StartPageScreen> {
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
               _buildJoin(),
+              if (_socketService.playerName != "")
+                Container(
+                  alignment: AlignmentDirectional.topStart,
+                  padding:
+                      EdgeInsets.symmetric(vertical: 5.0, horizontal: 15.0),
+                  child: new Text(
+                    'Player Name: ${_socketService.playerName}',
+                    textAlign: TextAlign.left,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
               if (_showPlayersList == true)
                 new Text(
                   'List of players:',

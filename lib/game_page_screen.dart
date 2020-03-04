@@ -47,13 +47,6 @@ class _GamePageScreenState extends State<GamePageScreen> {
         _alertResigned();
         break;
 
-      case 'play':
-        playerTurn = message["playerTurn"];
-        gameState = message["data"].split(';');
-        // Force rebuild
-        setState(() {});
-        break;
-
       case 'show_winner':
         gameResult = message["data"];
         _showGameResult(gameResult);
